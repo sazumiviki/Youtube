@@ -1,5 +1,5 @@
 import express from 'express';
-import ytSearch from 'yt-search';
+import ytsr from 'ytsr';
 import cheerio from 'cheerio';
 
 const fetch = import('node-fetch');
@@ -84,26 +84,16 @@ app.get('/api/youtube', async (req, res) => {
     }
 
     try {
-        let searchResult = await ytSearch(query);
-        let firstVideo = searchResult.videos[0];
+        const searchResult = await ytsr(query, { limit: 1 });
+        const firstVideo = searchResult.items[0];
 
-        if (contentType === 'video') {
+        if (contentType === 'video' || contentType === 'audio') {
             let videoInfo = await youtube.download(firstVideo.url);
             const formattedResponse = {
                 title: firstVideo.title,
-                thumbnail: firstVideo.thumbnail,
+                thumbnail: firstVideo.bestThumbnail.url,
                 views: firstVideo.views,
-                video: await formatDownloadLinks(videoInfo.video, firstVideo.title, firstVideo.thumbnail, firstVideo.views)
-            };
-            res.setHeader('Content-Type', 'application/json');
-            res.send(JSON.stringify(formattedResponse, null, 2));
-        } else if (contentType === 'audio') {
-            let audioInfo = await youtube.download(firstVideo.url);
-            const formattedResponse = {
-                title: firstVideo.title,
-                thumbnail: firstVideo.thumbnail,
-                views: firstVideo.views,
-                audio: await formatDownloadLinks(audioInfo.audio, firstVideo.title, firstVideo.thumbnail, firstVideo.views)
+                [contentType]: await formatDownloadLinks(videoInfo[contentType], firstVideo.title, firstVideo.bestThumbnail.url, firstVideo.views)
             };
             res.setHeader('Content-Type', 'application/json');
             res.send(JSON.stringify(formattedResponse, null, 2));
